@@ -1,19 +1,17 @@
-# Use specific Node version on Alpine
-FROM node:20-alpine
+# Use Node 20 Slim (Debian-based) for better native module compatibility
+FROM node:20-slim
 
 # Install system dependencies required for node-canvas
-# cairo, pango, jpeg, giflib are core requirements
-RUN apk add --no-cache \
-    build-base \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    pixman-dev \
-    pangomm-dev \
-    libjpeg-turbo-dev \
-    freetype-dev
+# Debian uses apt-get
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -21,10 +19,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install only production dependencies
+# node:20-slim is more likely to find prebuilt binaries for canvas
 RUN npm ci --only=production
 
 # Copy all application source code and assets
-# (The .dockerignore file prevents copying node_modules, .git, etc.)
 COPY . .
 
 # Expose the port
