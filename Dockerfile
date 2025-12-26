@@ -1,11 +1,34 @@
-FROM golang:1.23-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o server main.go
+# Use specific Node version on Alpine
+FROM node:20-alpine
 
-FROM alpine:latest
+# Install system dependencies required for node-canvas
+# cairo, pango, jpeg, giflib are core requirements
+RUN apk add --no-cache \
+    build-base \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    freetype-dev
+
 WORKDIR /app
-COPY --from=builder /app/server .
-COPY poc.bmp .
+
+# Copy package files first to leverage Docker cache
+COPY package.json package-lock.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy all application source code and assets
+# (The .dockerignore file prevents copying node_modules, .git, etc.)
+COPY . .
+
+# Expose the port
 EXPOSE 8080
-CMD ["./server"]
+
+# Start the server
+CMD ["node", "server.js"]
