@@ -1,17 +1,5 @@
-# Use Node 20 Slim (Debian-based) for better native module compatibility
-FROM node:20-slim
-
-# Install system dependencies required for node-canvas
-# Debian uses apt-get
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libcairo2-dev \
-    libpango1.0-dev \
-    libjpeg-dev \
-    libgif-dev \
-    librsvg2-dev \
-    python3 \
-    && rm -rf /var/lib/apt/lists/*
+# Use Node 20 Alpine for minimal footprint
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -19,8 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install only production dependencies
-# node:20-slim is more likely to find prebuilt binaries for canvas
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy all application source code and assets
 COPY . .
