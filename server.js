@@ -1,23 +1,19 @@
 const fastify = require('fastify')({ logger: true });
-const path = require('path');
-const fs = require('fs');
 const imageProcessor = require('./image-processor');
+const imageSource = require('./image-source');
 
 // Constants
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
-const IMAGE_PATH = path.join(__dirname, 'Pats10.jpg');
 
 // Routes
 fastify.get('/image', async (request, reply) => {
   try {
-    if (!fs.existsSync(IMAGE_PATH)) {
-      reply.code(404).send({ error: 'Source image not found' });
-      return;
-    }
+    // Get random image buffer from source
+    const imageBuffer = await imageSource.getRandomImage();
 
-    // Trigger on-demand processing
-    const bmpBuffer = await imageProcessor.process(IMAGE_PATH);
+    // Process the image
+    const bmpBuffer = await imageProcessor.processBuffer(imageBuffer);
 
     // Serve the result
     reply
@@ -26,17 +22,26 @@ fastify.get('/image', async (request, reply) => {
 
   } catch (err) {
     fastify.log.error(err);
-    reply.code(500).send({ error: 'Image processing failed' });
+    reply.code(500).send({ error: 'Image processing failed', message: err.message });
   }
 });
 
 fastify.get('/health', async (request, reply) => {
-    return { status: 'ok' };
+  return { status: 'ok' };
+});
+
+fastify.get('/status', async (request, reply) => {
+  return imageSource.getStatus();
 });
 
 // Start Server
 const start = async () => {
   try {
+    // Initialize image source (blocks until cache is ready)
+    console.log('Initializing image source...');
+    await imageSource.initialize();
+    console.log('Image source ready:', imageSource.getStatus());
+
     await fastify.listen({ port: PORT, host: HOST });
     console.log(`Server listening on http://${HOST}:${PORT}`);
   } catch (err) {
@@ -44,5 +49,16 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+// Graceful shutdown
+const shutdown = async () => {
+  console.log('Shutting down...');
+  imageSource.shutdown();
+  await fastify.close();
+  process.exit(0);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 start();
