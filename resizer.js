@@ -11,20 +11,23 @@ class Resizer {
   }
 
   /**
-   * Resizes and crops the image to fill the target dimensions
-   * Automatically determines 800x480 or 480x800 based on orientation
+   * Resizes and crops the image to fill the target dimensions (800x480)
+   * Portrait images are rotated 90° counter-clockwise to fill the landscape display
    * @param {Jimp} image
    * @returns {Jimp}
    */
   resizeAndCenterCrop(image) {
-    // Determine target dimensions based on orientation
     const isPortrait = image.bitmap.height > image.bitmap.width;
-    const width = isPortrait ? 480 : 800;
-    const height = isPortrait ? 800 : 480;
+    
+    // Rotate portrait images 90° counter-clockwise to fit landscape display
+    if (isPortrait) {
+      image.rotate(90);
+    }
 
+    // Always output 800x480 for the e-ink display
     // cover() resizes the image to fill the given width and height while maintaining aspect ratio.
     // The excess parts are cropped (center-weighted by default in Jimp)
-    return image.cover({ w: width, h: height });
+    return image.cover({ w: 800, h: 480 });
   }
 
   /**
