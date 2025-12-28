@@ -1,10 +1,60 @@
-const fastify = require('fastify')({ logger: true });
+// Patterns that indicate bot/scanner probes (not legitimate traffic)
+const BOT_PROBE_PATTERNS = [
+  /^\/\.git/,
+  /^\/\.env/,
+  /^\/\.svn/,
+  /^\/\.hg/,
+  /^\/wp-/,
+  /^\/wordpress/,
+  /^\/admin/,
+  /^\/phpmyadmin/i,
+  /^\/developmentserver/,
+  /^\/config\./,
+  /^\/backup/,
+  /^\/\.well-known\/security\.txt$/,  // Allow security.txt, block others
+];
+
+const fastify = require('fastify')({ 
+  logger: {
+    level: 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          host: request.headers?.host,
+          remoteAddress: request.ip,
+          remotePort: request.socket?.remotePort
+        };
+      }
+    }
+  }
+});
 const imageProcessor = require('./image-processor');
 const imageSource = require('./image-source');
 
 // Constants
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
+
+// Suppress logging for bot probe requests
+fastify.addHook('onRequest', async (request, reply) => {
+  const url = request.url;
+  const isBotProbe = BOT_PROBE_PATTERNS.some(pattern => pattern.test(url));
+  
+  if (isBotProbe) {
+    // Mark request to suppress response logging
+    request.isBotProbe = true;
+  }
+});
+
+// Custom 404 handler that suppresses logging for bot probes
+fastify.setNotFoundHandler((request, reply) => {
+  if (!request.isBotProbe) {
+    fastify.log.warn({ url: request.url, method: request.method }, 'Route not found');
+  }
+  reply.code(404).send({ error: 'Not Found' });
+});
 
 // Routes
 fastify.get('/image', async (request, reply) => {
