@@ -4,3 +4,4 @@ Dockerfile
 README.md
 ARCHITECTURE.md
 *.bmp
+.npmrc

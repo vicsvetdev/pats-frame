@@ -20,8 +20,8 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 # Copy package files first to leverage Docker cache
 COPY package.json package-lock.json ./
 
-# Install only production dependencies
-RUN npm install --omit=dev
+# Install only production dependencies (force public registry)
+RUN npm config set registry https://registry.npmjs.org/ && npm install --omit=dev
 
 # Copy all application source code and assets
 COPY . .
