@@ -17,11 +17,15 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
     CHROMIUM_PATH=/usr/bin/chromium-browser
 
-# Copy package files first to leverage Docker cache
-COPY package.json package-lock.json ./
+# Copy only package.json (ignore lock file to regenerate fresh)
+COPY package.json ./
 
-# Install only production dependencies (force public registry)
-RUN npm config set registry https://registry.npmjs.org/ && npm install --omit=dev
+# Force npm to use public registry and install only production dependencies
+# Delete any existing npm config and regenerate lock file fresh
+RUN rm -f /root/.npmrc /usr/local/etc/npmrc && \
+    echo "registry=https://registry.npmjs.org/" > /root/.npmrc && \
+    npm cache clean --force && \
+    npm install --omit=dev
 
 # Copy all application source code and assets
 COPY . .
